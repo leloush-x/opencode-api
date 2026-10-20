@@ -1583,7 +1583,6 @@ func setV1Headers(header http.Header, protocol wire.Protocol, body []byte, ids i
 // requests carry a fixed anthropic-beta set; upstreamRequest adds
 // anthropic-version and the beta query.
 func setV2Headers(header http.Header, protocol wire.Protocol, ids identity.RequestIDs) {
-	header.Set("Accept", "application/json, text/event-stream")
 	header.Set("x-opencode-client", "cli")
 	rootSession := ids.Session
 	if ids.ParentSession != "" {
