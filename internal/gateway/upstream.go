@@ -1369,6 +1369,9 @@ func (g *Gateway) recordUpstreamAttempt(ctx context.Context, route models.Route,
 // lane passes anonymousZenKey.
 func upstreamRequest(ctx context.Context, baseURL string, protocol wire.Protocol, body []byte, ids identity.RequestIDs, key string) (*http.Request, error) {
 	endpoint := strings.TrimRight(baseURL, "/") + wire.Path(protocol)
+	if !models.IsV1Upstream(baseURL) {
+		endpoint = strings.TrimRight(baseURL, "/") + v2EndpointPath(baseURL, protocol)
+	}
 	if protocol == wire.Anthropic && !models.IsV1Upstream(baseURL) {
 		endpoint = withAnthropicBeta(endpoint)
 	}
@@ -1392,6 +1395,24 @@ func upstreamRequest(ctx context.Context, baseURL string, protocol wire.Protocol
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
 	return req, nil
+}
+
+// v2EndpointPath returns the route a 2.1 client posts to on a v2 origin. The
+// 2.1 client groups /inference routes by provider family, so the family
+// segment sits between the origin and the protocol path (a 2.0.32 client
+// posted the protocol path directly, and that route still answers). Origins
+// that are not the /inference gateway — a custom base, or /zen/go — keep the
+// flat route, because the family grouping is specific to /inference.
+func v2EndpointPath(baseURL string, protocol wire.Protocol) string {
+	parsed, err := url.Parse(baseURL)
+	if err != nil || !strings.HasSuffix(strings.TrimRight(parsed.Path, "/"), "/inference") {
+		return wire.Path(protocol)
+	}
+	family := "openai"
+	if protocol == wire.Anthropic {
+		family = "anthropic"
+	}
+	return "/" + family + wire.Path(protocol)
 }
 
 // withAnthropicBeta marks an Anthropic endpoint as beta the way the OpenCode
