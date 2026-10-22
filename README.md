@@ -5,16 +5,20 @@ A Bun/TypeScript rewrite of the Go gateway in this repository. It serves the
 every upstream request goes out anonymously (`Authorization: Bearer public`).
 
 The Go implementation stays in the repository as the reference; this directory
-is the port.
+is the port. Built and tested against **Bun 1.4.4**.
 
 ## Run it
 
 ```bash
 cd bun
-bun install
+bun run setup      # bun install --backend=symlink
 cp ../config.example.json config.json   # or write your own
 bun run start -- -config config.json
 ```
+
+`bun run setup` exists because on some filesystems bun's default hardlink
+backend writes scoped packages with mangled file names, which breaks the type
+check; the symlink backend installs them correctly.
 
 | Flag | Meaning |
 |---|---|
@@ -25,9 +29,13 @@ bun run start -- -config config.json
 `SERVER_KEYS` (comma separated) overrides `server_keys` from the environment.
 
 ```bash
-bun run test        # 45 tests
-bun run typecheck   # tsc --noEmit
+bun run test        # 45 tests, in parallel worker processes
+bun run typecheck   # bun check
+bun run verify      # typecheck and tests concurrently
+bun run format      # bun fmt (Prettier-compatible)
 bun run build       # standalone binary in dist/ + the WebUI next to it
+bun run profile:cpu # an LLM-ready Markdown CPU profile
+bun run profile:heap # an LLM-ready Markdown heap profile
 ```
 
 ## Endpoints
@@ -85,6 +93,29 @@ accepted and ignored, so an existing `config.json` keeps loading.
 - **Exits** — direct, HTTP, HTTPS, SOCKS5 and rotating `#pool` proxies, with a
   per-session cursor, cool-downs and a free-tier IP block guard.
 - **Management API** — login, sessions, CSRF, masked configuration, monitor,
-  logs and a live log stream, plus the existing WebUI served as-is.
+  logs and a live log stream, plus the existing WebUI served by Bun's own
+  directory routes.
+
+## Bun 1.4 features in use
+
+| Feature | Where |
+|---|---|
+| `Bun.JSONC.parse` | The configuration file, comments and all — the hand-rolled comment stripper is gone. |
+| `Bun.serve` directory routes (`{ dir }`) | The WebUI: `sendfile`, `ETag`/`Last-Modified`, `304`, `Range`/`206`, and `openat2(RESOLVE_IN_ROOT)` path clamping (a traversal attempt answers `404`). |
+| `Bun.serve` backpressure | The SSE path pauses when the client is slow instead of buffering the whole stream on the heap. |
+| `fetch` proxy with headers | `proxy: { url, headers }` sends `Proxy-Authorization` for an authenticated HTTP proxy. |
+| `bun check` | The type check (`bun run typecheck`); it replaces `tsc`. |
+| `bun fmt` | The formatter (`bun run format`). |
+| `bun test --parallel` | The tests run in parallel worker processes. |
+| `bun run --parallel "check:*"` | `bun run verify` runs the type check and the tests concurrently. |
+| `--cpu-prof-md` / `--heap-prof-md` | `bun run profile:cpu` / `profile:heap` write Markdown profiles meant to be read by a human or an LLM. |
+| `bun:fs`, `bun:path` | Bun's own modules instead of the Node compatibility layer; `src/shims.d.ts` declares the handful of functions used, so the project needs no `@types/node`. |
+| `Bun.CryptoHasher` | SHA-256 for the key fingerprints and the session ids. |
+| `Bun.env`, `Bun.argv`, `Bun.main` | The runtime globals. |
+
+Not adopted: `Bun.WebView`, `Bun.Image`, `Bun.markdown`, `Bun.cron`,
+`Bun.Terminal` (nothing in a proxy gateway needs them), HTTP/3 in `Bun.serve`
+and HTTP/2/3 in `fetch` (experimental; the free tier expects the client's own
+request shape and a 1.4 client is safer over HTTP/1.1).
 
 See [PORTING.md](./PORTING.md) for the coverage matrix and the known gaps.

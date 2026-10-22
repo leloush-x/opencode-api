@@ -9,8 +9,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": [
-      "bun",
-      "node"
+      "bun-types"
     ],
     "strict": true,
     "noUncheckedIndexedAccess": false,
@@ -18,16 +17,12 @@
     "noEmit": true,
     "allowJs": true,
     "verbatimModuleSyntax": false,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
     "allowImportingTsExtensions": true
   },
   "include": [
     "src/**/*.ts",
-    "tests/**/*.ts"
+    "src/**/*.d.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
   ]
 }

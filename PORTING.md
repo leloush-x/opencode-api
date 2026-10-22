@@ -50,10 +50,14 @@ accepted (and ignored) in `config.json`, so an existing file keeps loading.
 
 ## Verification
 
-- `bun test` — 45 tests: configuration, the protocol bridge, the streaming
-  parser/emitter/transcoder/collapser, the upstream request shaping, the
-  gateway against a stub upstream.
-- `bun run typecheck` — clean.
-- Live check against the real free tier (`glm-5.3-flash-free`): streaming and
-  non-streaming Chat Completions, Anthropic Messages and Responses all return
-  correct documents.
+- `bun test` — 45 tests in parallel worker processes: configuration, the
+  protocol bridge, the streaming parser/emitter/transcoder/collapser, the
+  upstream request shaping, the gateway against a stub upstream.
+- `bun run typecheck` (`bun check`) — clean, 17 files.
+- `scripts/verify-live.sh` — 15 checks against the **real** free tier
+  (`glm-5.3-flash-free`): health, auth, the model list, streaming and
+  non-streaming chat, Anthropic Messages, Responses, the 404 for an unknown
+  model, the WebUI and the admin login. All pass for the dev server and for
+  the compiled standalone binary.
+- `bun run build` — a single `bun build --compile` binary with the WebUI
+  staged next to it.

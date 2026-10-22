@@ -3,19 +3,25 @@
   "version": "1.5.0",
   "private": true,
   "type": "module",
-  "description": "Bun port of the opencode2api gateway (OpenCode Zen / Zen Go proxy)",
+  "description": "Bun port of the opencode2api gateway (keyless OpenCode free tier proxy)",
   "module": "src/index.ts",
   "scripts": {
     "start": "bun run src/index.ts",
+    "setup": "bun install --backend=symlink",
     "dev": "bun --watch run src/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit",
+    "test": "bun test --parallel",
+    "typecheck": "bun check",
+    "format": "bun fmt src tests scripts",
+    "format:check": "bun fmt --check src tests scripts",
+    "check:test": "bun test --parallel",
+    "check:type": "bun check",
+    "verify": "bun run --parallel \"check:*\"",
     "build": "bun run scripts/build.ts",
-    "build:binary": "bun build --compile --minify --sourcemap src/index.ts --outfile dist/opencode2api"
+    "build:binary": "bun build --compile --minify --sourcemap src/index.ts --outfile dist/opencode2api",
+    "profile:cpu": "bun --cpu-prof-md --cpu-prof-dir dist src/index.ts",
+    "profile:heap": "bun --heap-prof-md --heap-prof-dir dist src/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/node": "22",
-    "typescript": "^5.9.2"
+    "@types/bun": "latest"
   }
 }

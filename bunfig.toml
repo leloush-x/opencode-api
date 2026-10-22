@@ -2,6 +2,13 @@
 # The port has no runtime dependencies: everything it needs is in the Bun
 # standard library (fetch, password hashing, file IO, test runner).
 exact = true
+# The port needs no type packages beyond @types/bun: `bun:fs`, `bun:path`,
+# `Bun.CryptoHasher` and the `process` members it uses are declared in
+# src/shims.d.ts.
+#
+# Install with `bun run setup` (bun install --backend=symlink): on some
+# filesystems bun's default hardlink backend writes scoped packages with
+# mangled file names, which breaks the type check.
 
 [test]
 root = "./tests"
