@@ -1,0 +1,7 @@
+[install]
+# The port has no runtime dependencies: everything it needs is in the Bun
+# standard library (fetch, password hashing, file IO, test runner).
+exact = true
+
+[test]
+root = "./tests"
