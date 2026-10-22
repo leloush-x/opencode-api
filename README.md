@@ -68,6 +68,18 @@ Command-line options:
 
 The configuration directory must be writable for password migration, configuration saves, and model caches.
 
+### Keys from the environment
+
+`SERVER_KEYS`, `ZEN_KEYS` and `GO_KEYS` override the matching key list in the configuration file, so a container deployment can keep credentials in the platform's secret store rather than in a file. Each holds a comma-separated list; whitespace and empty entries are dropped. A variable that is unset or blank leaves the file value in place.
+
+```bash
+docker run -d --name opencode2api -p 8080:8080 -p 8081:8081 \
+  -e SERVER_KEYS=my-local-key \
+  -e ZEN_KEYS=your-zen-key \
+  -v opencode2api-state:/var/lib/opencode2api \
+  ghcr.io/leloush-x/opencode-api:latest
+```
+
 ## Docker
 
 The published image is `ghcr.io/jasonxu114514/opencode2api`.
@@ -270,8 +282,7 @@ See [config.example.json](config.example.json) for a complete starting configura
 | --------------------------- | --------------------------------------------------------------------------- |
 | `listen`                    | `127.0.0.1:8080`.                                                           |
 | `server_keys`               | At least one local key is required.                                         |
-| `zen_keys`, `go_keys`       | At least one upstream key is required unless anonymous access is enabled.   |
-| `anonymous`                 | `false`.                                                                    |
+| `zen_keys`, `go_keys`       | At least one upstream key is required unless anonymous access is enabled.   || `anonymous`                 | `false`.                                                                    |
 | `prefer`                    | `go`; accepts `go` or `zen`.                                                |
 | `upstream.zen`              | `https://opencode.ai/inference`; the v2 console, which expects the OpenCode 2.x client shape. |
 | `upstream.go`               | `https://opencode.ai/inference/go`; the Go plan on the same v2 console.     |

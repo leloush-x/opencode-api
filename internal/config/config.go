@@ -271,7 +271,43 @@ func Load(path string) (Config, error) {
 	if err := jsonutil.EnsureEOF(dec); err != nil {
 		return Config{}, fmt.Errorf("parse %s: %w", path, err)
 	}
+	applyEnvKeys(&cfg)
 	return Normalize(path, cfg)
+}
+
+// applyEnvKeys replaces the key lists from the environment so a container
+// deployment can keep credentials in the platform's secret store instead of
+// the configuration file, whose contents are often visible as deployment
+// metadata. Each variable holds a comma-separated list; surrounding whitespace
+// and empty entries are dropped. A variable that is unset or blank leaves the
+// file value alone, so this is purely an override and unset deployments are
+// unchanged.
+func applyEnvKeys(cfg *Config) {
+	if keys, set := envKeyList("SERVER_KEYS"); set {
+		cfg.ServerKeys = keys
+	}
+	if keys, set := envKeyList("ZEN_KEYS"); set {
+		cfg.ZenKeys = keys
+	}
+	if keys, set := envKeyList("GO_KEYS"); set {
+		cfg.GoKeys = keys
+	}
+}
+
+// envKeyList reads a comma-separated key list and reports whether the variable
+// named anything at all. A variable that is unset or blank reports false.
+func envKeyList(name string) ([]string, bool) {
+	raw, ok := os.LookupEnv(name)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return nil, false
+	}
+	keys := make([]string, 0, strings.Count(raw, ",")+1)
+	for _, key := range strings.Split(raw, ",") {
+		if key = strings.TrimSpace(key); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	return keys, true
 }
 
 // Normalize resolves external inputs and validates a Config supplied by
