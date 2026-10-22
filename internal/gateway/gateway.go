@@ -3,13 +3,15 @@
 // Upstreams fall into two lanes, named after the OpenCode client generation
 // whose request shape they expect, not after their URL path: both lanes
 // append the /v1/... route segment. The v1 lane is the https://opencode.ai/zen
-// origin (models.V1Base, also the default upstream.zen), which
-// models.IsV1Upstream detects. It expects the OpenCode 1.x client shape: the
-// 1.x User-Agent, the x-opencode-request header, a git-commit-shaped project
-// and, on the free tier, the single "read" tool. The v2 lane is the /inference
-// origin (upstream.anonymous) and the Go plan's /zen/go origin, which expect
-// the OpenCode 2.x CLI shape. The anonymous free tier tries the configured v2
-// /inference origin first and falls back to the v1 origin.
+// origin (models.V1Base), which models.IsV1Upstream detects. It expects the
+// OpenCode 1.x client shape: the 1.x User-Agent, the x-opencode-request
+// header, a git-commit-shaped project and, on the free tier, the single
+// "read" tool. The v2 lane is the /inference origin (the default upstream.zen
+// and upstream.anonymous) and the Go plan's /inference/go origin, which expect
+// the OpenCode 2.x CLI shape; its routes are grouped by provider family, so
+// /inference/openai/v1/chat/completions and /inference/anthropic/v1/messages
+// replace the flat /v1/... paths there. The anonymous free tier tries the
+// configured v2 /inference origin first and falls back to the v1 origin.
 package gateway
 
 import (

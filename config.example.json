@@ -7,8 +7,8 @@
   "proxies": ["direct"],
   "proxyfile": "",
   "upstream": {
-    "zen": "https://opencode.ai/zen",
-    "go": "https://opencode.ai/zen/go",
+    "zen": "https://opencode.ai/inference",
+    "go": "https://opencode.ai/inference/go",
     "anonymous": "https://opencode.ai/inference"
   },
   "retry": {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -25,9 +26,9 @@ const (
 	ZenDocsURL      = "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/web/src/content/docs/zen.mdx"
 	GoDocsURL       = "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/web/src/content/docs/go.mdx"
 	// V1Base is the v1 lane's origin: the /zen console (serving /zen/v1/*) that
-	// expects the OpenCode 1.x request shape. It is the default keyed Zen
-	// upstream and the anonymous lane's fallback after the v2 /inference
-	// origin. It also serves the models listing.
+	// expects the OpenCode 1.x request shape. It is the anonymous lane's
+	// fallback after the v2 /inference origin, and it still answers the
+	// models listing.
 	V1Base = "https://opencode.ai/zen"
 )
 
@@ -40,6 +41,18 @@ func IsV1Upstream(baseURL string) bool {
 		return true
 	}
 	return strings.HasSuffix(trimmed, "/zen")
+}
+
+// IsInferenceOrigin reports whether baseURL targets the v2 console's
+// /inference gateway, the origin the OpenCode 2.x CLI talks to. Its base and
+// everything under it belong to it, the Go plan's /inference/go included.
+func IsInferenceOrigin(baseURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil {
+		return false
+	}
+	path := strings.TrimRight(parsed.Path, "/")
+	return path == "/inference" || strings.HasPrefix(path, "/inference/")
 }
 
 // protocolDocEndpointPattern matches a row of a documentation endpoint table,

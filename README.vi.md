@@ -266,8 +266,8 @@ Xem [config.example.json](config.example.json) để có một cấu hình khở
 | `zen_keys`, `go_keys`      | Cần ít nhất một key upstream trừ khi bật truy cập ẩn danh.       |
 | `anonymous`                | `false`.                                                         |
 | `prefer`                   | `go`; nhận `go` hoặc `zen`.                                      |
-| `upstream.zen`             | `https://opencode.ai/zen`.                                       |
-| `upstream.go`              | `https://opencode.ai/zen/go`.                                    |
+| `upstream.zen`             | `https://opencode.ai/inference`; bảng điều khiển v2.            |
+| `upstream.go`              | `https://opencode.ai/inference/go`; gói Go trên cùng bảng điều khiển. |
 | `upstream.anonymous`       | `https://opencode.ai/inference`; kênh ẩn danh thử trước, dự phòng về `/zen`. |
 | `proxies`                  | Rơi về `["direct"]` khi cả hai nguồn proxy đều rỗng.              |
 | `proxyfile`                | Không bắt buộc; đường dẫn tương đối được phân giải cạnh file cấu hình. |

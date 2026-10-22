@@ -262,8 +262,8 @@ Key 初始化时均衡分配到代理。真实流量可以触发代理检查、K
 | `zen_keys`、`go_keys`       | 未启用匿名模式时，至少需要一个上游 Key。                                              |
 | `anonymous`                 | `false`。                                                                             |
 | `prefer`                    | `go`；可选 `go`、`zen`。                                                              |
-| `upstream.zen`              | `https://opencode.ai/zen`。                                                           |
-| `upstream.go`               | `https://opencode.ai/zen/go`。                                                        |
+| `upstream.zen`              | `https://opencode.ai/inference`；v2 控制台，接收 OpenCode 2.x 客户端格式。                    |
+| `upstream.go`               | `https://opencode.ai/inference/go`；同一 v2 控制台上的 Go 套餐。                              |
 | `upstream.anonymous`        | `https://opencode.ai/inference`；匿名通道优先使用，失败后回退到 `/zen`。             |
 | `proxies`                   | 两个代理来源都为空时，使用 `["direct"]`。                                             |
 | `proxyfile`                 | 可选；相对路径基于配置文件所在目录解析。                                              |

@@ -67,12 +67,13 @@ type ReasoningConfig struct {
 // in /zen is the v1 lane, any other a v2 lane.
 type UpstreamConfig struct {
 	// Zen is the base URL of the keyed Zen tier. Its default,
-	// https://opencode.ai/zen, is the v1 lane, which expects the OpenCode 1.x
-	// client request shape.
+	// https://opencode.ai/inference, is the v2 console, which expects the
+	// OpenCode 2.x CLI request shape and serves the models of the Zen plan.
 	Zen string `json:"zen"`
 	// Go is the base URL of the keyed Go plan tier. Its default,
-	// https://opencode.ai/zen/go, is a v2 lane, which expects the OpenCode 2.x
-	// CLI shape. The WebUI also reads the plan's quota from its /v1/usage.
+	// https://opencode.ai/inference/go, is the v2 console's Go plan, which
+	// expects the OpenCode 2.x CLI shape. The WebUI also reads the plan's
+	// quota from its /v1/usage.
 	Go string `json:"go"`
 	// Anonymous is the v2 /inference origin of the keyless free tier. The
 	// anonymous lane tries this origin first and falls back to the v1 /zen
@@ -254,7 +255,7 @@ func Load(path string) (Config, error) {
 	}
 	cfg := Config{
 		Listen:      "127.0.0.1:8080",
-		Upstream:    UpstreamConfig{Zen: "https://opencode.ai/zen", Go: "https://opencode.ai/zen/go", Anonymous: "https://opencode.ai/inference"},
+		Upstream:    UpstreamConfig{Zen: "https://opencode.ai/inference", Go: "https://opencode.ai/inference/go", Anonymous: "https://opencode.ai/inference"},
 		Retry:       RetryConfig{MaxAttempts: 3, TimeoutSeconds: 300},
 		Models:      ModelsConfig{RefreshSeconds: 300, Protocols: map[string]string{}},
 		Performance: PerformanceConfig{MaxIdleConns: 2048, MaxIdleConnsPerHost: 256, MaxConnsPerHost: 0, IdleConnTimeoutSeconds: 120, ConnectTimeoutSeconds: 5, FailureCooldownSeconds: 15},

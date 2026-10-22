@@ -567,10 +567,10 @@ func (g *Gateway) anonymousUpstreams() []string {
 // baseURL. Free-model traffic to the /zen and /inference lanes goes through
 // the Bun client (see httpx.BunTransport), whose TLS ClientHello and HTTP/1.1
 // header layout match the runtime of the official OpenCode clients; every
-// other request, including the Go tier (/zen/go), keeps the regular client.
+// other request, including a keyed request to the Go plan, keeps the regular
+// client.
 func (g *Gateway) inferenceClient(proxy *proxyTransport, baseURL, model string) *http.Client {
-	lane := strings.ToLower(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
-	if g.catalog.IsFreeModel(model) && (models.IsV1Upstream(baseURL) || strings.HasSuffix(lane, "/inference")) {
+	if g.catalog.IsFreeModel(model) && (models.IsV1Upstream(baseURL) || models.IsInferenceOrigin(baseURL)) {
 		return proxy.bun
 	}
 	return proxy.client
@@ -1523,12 +1523,7 @@ func upstreamRequest(ctx context.Context, baseURL string, protocol wire.Protocol
 // /inference/go/openai/v1/chat/completions. An origin outside /inference — a
 // custom base, or the legacy /zen/go — keeps the flat route.
 func v2EndpointPath(baseURL string, protocol wire.Protocol) string {
-	parsed, err := url.Parse(baseURL)
-	if err != nil {
-		return wire.Path(protocol)
-	}
-	path := strings.TrimRight(parsed.Path, "/")
-	if path != "/inference" && !strings.HasPrefix(path, "/inference/") {
+	if !models.IsInferenceOrigin(baseURL) {
 		return wire.Path(protocol)
 	}
 	family := "openai"

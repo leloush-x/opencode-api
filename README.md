@@ -211,7 +211,7 @@ Eligibility is a routing decision; the upstream can still reject or rate-limit t
 
 The routing sequence is:
 
-1. For an eligible model, try up to `performance.max_anonymous_exits` available anonymous proxies once each. Every proxy tries the v2 `/inference` lane first, then the v1 `/zen` lane.
+1. For an eligible model, try up to `performance.max_anonymous_exits` available anonymous proxies once each. Every proxy tries the v2 `/inference` lane first, then the v1 `/zen` lane. On the v2 console the routes are grouped by provider family, so a chat request goes to `/inference/openai/v1/chat/completions` and a messages request to `/inference/anthropic/v1/messages`.
 2. Try authenticated tiers in `prefer` order, using only tiers with a configured key and a route for that model.
 3. Apply `retry.max_attempts` separately to each authenticated tier.
 
@@ -262,8 +262,8 @@ See [config.example.json](config.example.json) for a complete starting configura
 | `zen_keys`, `go_keys`       | At least one upstream key is required unless anonymous access is enabled.   |
 | `anonymous`                 | `false`.                                                                    |
 | `prefer`                    | `go`; accepts `go` or `zen`.                                                |
-| `upstream.zen`              | `https://opencode.ai/zen`.                                                  |
-| `upstream.go`               | `https://opencode.ai/zen/go`.                                               |
+| `upstream.zen`              | `https://opencode.ai/inference`; the v2 console, which expects the OpenCode 2.x client shape. |
+| `upstream.go`               | `https://opencode.ai/inference/go`; the Go plan on the same v2 console.     |
 | `upstream.anonymous`        | `https://opencode.ai/inference`; tried first by the anonymous lane, which falls back to `/zen`. |
 | `proxies`                   | Falls back to `["direct"]` when both proxy sources are empty.               |
 | `proxyfile`                 | Optional; relative paths resolve beside the configuration file.             |
