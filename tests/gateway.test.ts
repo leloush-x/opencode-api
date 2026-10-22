@@ -368,3 +368,63 @@ describe("gateway error paths", () => {
     expect(response.status).toBe(502);
   });
 });
+
+describe("gateway rate limits", () => {
+  test("the upstream retry-after reaches the client", async () => {
+    const limited = Bun.serve({
+      port: 0,
+      fetch: () =>
+        new Response(
+          JSON.stringify({ error: { message: "daily limit reached" } }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "3600",
+            },
+          },
+        ),
+    });
+    const config = normalize(
+      "config.json",
+      decodeConfig({
+        listen: "127.0.0.1:0",
+        server_keys: ["local-key"],
+        upstream: {
+          anonymous: `http://localhost:${limited.port}`,
+          fallback: `http://localhost:${limited.port}`,
+        },
+        retry: { max_attempts: 1, timeout_seconds: 30 },
+      }),
+    );
+    const gateway = new Gateway(config);
+    gateway.catalog.replace([
+      {
+        id: "model-free",
+        protocol: "chat",
+        contextWindow: 1000,
+        maxOutput: 100,
+        reasoning: false,
+        toolCall: true,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        deprecated: false,
+        free: true,
+      },
+    ]);
+    const response = await gateway.handle(
+      new Request("http://localhost/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: "Bearer local-key" },
+        body: JSON.stringify({
+          model: "model-free",
+          messages: [{ role: "user", content: "hi" }],
+        }),
+      }),
+    );
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("3600");
+    const document = (await response.json()) as { error: { message: string } };
+    expect(document.error.message).toBe("daily limit reached");
+    limited.stop(true);
+  });
+});

@@ -2,7 +2,12 @@
 
 import { type Config, fingerprint, runtimeProxies } from "./config.ts";
 import { deriveRequestIds } from "./identity.ts";
-import { ModelCatalog, fetchCapabilities, fetchModels } from "./models.ts";
+import {
+  ModelCatalog,
+  type ModelInfo,
+  fetchCapabilities,
+  fetchModels,
+} from "./models.ts";
 import {
   ANTHROPIC,
   CHAT,
@@ -18,6 +23,7 @@ import {
 import { convertResponse, responseUsage } from "./response.ts";
 import { collapseStream, forwardStream, transcodeStream } from "./stream.ts";
 import { logger, monitor } from "./telemetry.ts";
+import { readFileSync, writeFileSync } from "bun:fs";
 import {
   ANONYMOUS_KEY,
   V1_BASE,
@@ -120,6 +126,8 @@ export class Gateway {
   config: Config;
   catalog = new ModelCatalog();
   exits: ExitPool;
+  /** The catalog cache file, next to the configuration. */
+  private cachePath: string;
   private refreshTimer: ReturnType<typeof setInterval> | undefined;
   private breaker = {
     failures: 0,
@@ -129,8 +137,9 @@ export class Gateway {
     maxMs: 0,
   };
 
-  constructor(config: Config) {
+  constructor(config: Config, configPath = "config.json") {
     this.config = config;
+    this.cachePath = `${configPath}.models.catalog.json`;
     this.exits = new ExitPool(runtimeProxies(config));
     const backoff = config.models.anonymous_backoff;
     if (backoff) {
@@ -165,6 +174,7 @@ export class Gateway {
         );
       });
       this.catalog.replace(models);
+      this.saveCachedCatalog();
       logger.info("models", "catalog_refreshed", "model catalog refreshed", {
         models: models.length,
       });
@@ -180,11 +190,55 @@ export class Gateway {
   }
 
   start(): void {
+    // The cached catalog answers /v1/models right away; the refresh replaces
+    // it in the background.
+    this.loadCachedCatalog();
     void this.refreshModels();
     this.refreshTimer = setInterval(
       () => void this.refreshModels(),
       this.config.models.refresh_seconds * 1000,
     );
+  }
+
+  /** loadCachedCatalog installs the catalog of the last successful refresh. */
+  private loadCachedCatalog(): void {
+    try {
+      const cached = readFileSync(this.cachePath, "utf8");
+      const payload = JSON.parse(cached) as { models?: ModelInfo[] };
+      if (Array.isArray(payload.models) && payload.models.length) {
+        this.catalog.replace(payload.models);
+        logger.info(
+          "models",
+          "catalog_cached",
+          "model catalog loaded from the cache",
+          {
+            models: payload.models.length,
+          },
+        );
+      }
+    } catch {
+      /* no cache yet */
+    }
+  }
+
+  /** saveCachedCatalog writes the catalog next to the configuration. */
+  private saveCachedCatalog(): void {
+    const models = this.catalog.infos();
+    if (!models.length) return;
+    try {
+      writeFileSync(this.cachePath, JSON.stringify({ models }), {
+        mode: 0o600,
+      });
+    } catch (error) {
+      logger.warn(
+        "models",
+        "catalog_cache_failed",
+        "could not write the model catalog cache",
+        {
+          error: (error as Error).message,
+        },
+      );
+    }
   }
 
   stop(): void {
@@ -468,6 +522,11 @@ export class Gateway {
         extractErrorMessage(text) || response.statusText,
         "upstream_error",
         ids.request,
+        // The free tier answers 429 with a retry-after (seconds until the end
+        // of the day); the client needs it to back off instead of hammering.
+        response.headers.get("retry-after")
+          ? { "Retry-After": response.headers.get("retry-after") as string }
+          : undefined,
       );
     }
 
@@ -590,6 +649,9 @@ export class Gateway {
     );
     let lastError = "all upstream attempts failed";
     let lastStatus = 0;
+    // The last upstream error response is relayed to the client: its status,
+    // message and retry-after are the actionable parts.
+    let lastResponse: Response | undefined;
 
     for (let proxyIndex = 0; proxyIndex < limit; proxyIndex++) {
       const exit = this.exits.next(ids.session);
@@ -660,9 +722,11 @@ export class Gateway {
           continue;
         }
         lastError = `upstream returned ${response.status}`;
+        lastResponse = response;
         this.noteFailure();
       }
     }
+    if (lastResponse) return { status: lastStatus, response: lastResponse };
     return { status: lastStatus, error: new Error(lastError) };
   }
 
@@ -672,9 +736,12 @@ export class Gateway {
     message: string,
     kind: string,
     requestId: string,
+    extra?: Record<string, string>,
   ): Response {
     const headers = new Headers({ "Content-Type": "application/json" });
     if (requestId) headers.set("x-request-id", requestId);
+    for (const [name, value] of Object.entries(extra ?? {}))
+      headers.set(name, value);
     const body =
       protocol === ANTHROPIC
         ? { type: "error", error: { type: kind, message } }

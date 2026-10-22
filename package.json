@@ -19,7 +19,8 @@
     "build": "bun run scripts/build.ts",
     "build:binary": "bun build --compile --minify --sourcemap src/index.ts --outfile dist/opencode2api",
     "profile:cpu": "bun --cpu-prof-md --cpu-prof-dir dist src/index.ts",
-    "profile:heap": "bun --heap-prof-md --heap-prof-dir dist src/index.ts"
+    "profile:heap": "bun --heap-prof-md --heap-prof-dir dist src/index.ts",
+    "bench": "bun run scripts/bench.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

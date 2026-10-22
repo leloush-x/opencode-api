@@ -36,7 +36,21 @@ bun run format      # bun fmt (Prettier-compatible)
 bun run build       # standalone binary in dist/ + the WebUI next to it
 bun run profile:cpu # an LLM-ready Markdown CPU profile
 bun run profile:heap # an LLM-ready Markdown heap profile
+bun run bench     # startup, model list and reply latency
 ```
+
+`bun run bench` measures the port against a local stub upstream (the port's own
+cost) and `bun run bench -- --live` against the real free tier (the end-to-end
+cost). Numbers from an Android/arm64 device:
+
+| Measurement | Local stub | Live free tier |
+|---|---|---|
+| Startup (spawn to first `/healthz`) | 130 ms | 131 ms |
+| `GET /v1/models` (served from the catalog, no upstream call) | p50 4.3 ms | p50 4.0 ms |
+| Chat reply, end to end | p50 18 ms | p50 434 ms, p95 1287 ms |
+| Streaming, time to first byte | p50 14 ms | p50 446 ms, p95 915 ms |
+
+So the port costs ~14 ms per request; the rest is the upstream model.
 
 ## Endpoints
 
@@ -90,6 +104,11 @@ accepted and ignored, so an existing `config.json` keeps loading.
   definitions, and the 2.x client's key order.
 - **Model catalog** — `/v1/models` and the OpenCode capability catalog are
   merged, so limits, cost and the native protocol of every model are known.
+  The catalog is cached next to the configuration
+  (`<config>.models.catalog.json`), so the model list is available instantly
+  after a restart and survives an upstream outage.
+- **Rate limits** — the free tier limits every model per IP per day; the
+  upstream's `429` and its `Retry-After` reach the client unchanged.
 - **Exits** — direct, HTTP, HTTPS, SOCKS5 and rotating `#pool` proxies, with a
   per-session cursor, cool-downs and a free-tier IP block guard.
 - **Two lanes** — the v2 `/inference` console first, the v1 `/zen` origin

@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     redactor.string(value),
   );
 
-  const gateway = new Gateway(config);
+  const gateway = new Gateway(config, flags.config);
   gateway.start();
 
   const api = Bun.serve({

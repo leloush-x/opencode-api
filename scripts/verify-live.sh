@@ -31,14 +31,24 @@ check "models with a key is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
 grep -q "\"$MODEL\"" /tmp/vm.json
 check "models list contains $MODEL" $?
 
-# 0. preflight: the free tier rate limits repeated runs
-probe=$(timeout 60 curl -s -o /tmp/vprobe.json -w "%{http_code}" -m 50 "$BASE/v1/chat/completions" \
-  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" 2>&1)
-if [ "$probe" = "429" ]; then
-  echo "SKIP  the free tier is rate limiting this IP (429); the live checks need a cool-down"
+# 0. preflight: the free tier limits every model per IP per day, so pick a
+# model that still has quota.
+CANDIDATES="${CANDIDATES:-$MODEL beam-free big-pickle flint-40b-free minimax-m3.1-flash-free deepseek-v4.1-flash-free mimo-v2.6-flash-free nemotron-3.5-lightning-free}"
+MODEL=""
+for candidate in $CANDIDATES; do
+  code=$(timeout 60 curl -s -o /tmp/vprobe.json -w "%{http_code}" -m 50 "$BASE/v1/chat/completions" \
+    -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+    -d "{\"model\":\"$candidate\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" 2>&1)
+  if [ "$code" = "200" ]; then
+    MODEL="$candidate"
+    break
+  fi
+done
+if [ -z "$MODEL" ]; then
+  echo "SKIP  every free model is rate limited for this IP today (the upstream answers 429)"
   exit 0
 fi
+echo "model             $MODEL"
 
 # 4. chat, streaming
 out=$(timeout 120 curl -s -N -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" \
