@@ -43,6 +43,17 @@ Before starting, edit `config.json`:
 ./opencode2api -config config.json
 ```
 
+### Download a release
+
+Every release carries the bare binary next to the archives, under a stable name, so an update is one download:
+
+```bash
+curl -L -o opencode2api https://github.com/leloush-x/opencode-api/releases/latest/download/opencode2api-linux-arm64
+chmod +x opencode2api
+```
+
+The names are `opencode2api-linux-amd64`, `opencode2api-linux-arm64`, `opencode2api-darwin-amd64`, `opencode2api-darwin-arm64`, `opencode2api-windows-amd64.exe` and `opencode2api-windows-arm64.exe`. The archives next to them carry the same binaries with the docs and the example configuration.
+
 On Windows, use `Copy-Item config.example.json config.json`, build with `go build -o opencode2api.exe ./cmd/opencode2api`, then run `.\opencode2api.exe -config config.json`.
 
 The example listens on `127.0.0.1:8080` for the API and `0.0.0.0:8081` for the WebUI. Open `http://localhost:8081` locally. Restrict management access and use an HTTPS reverse proxy when accessing it over a network.

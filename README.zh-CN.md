@@ -45,6 +45,17 @@ go build -o opencode2api ./cmd/opencode2api
 
 Windows 下使用 `Copy-Item config.example.json config.json` 复制配置，执行 `go build -o opencode2api.exe ./cmd/opencode2api` 编译，再运行 `.\opencode2api.exe -config config.json`。
 
+### 下载发布版
+
+每个发布版本除压缩包外还附带独立的可执行文件，名称固定，因此更新只需一次下载：
+
+```bash
+curl -L -o opencode2api https://github.com/leloush-x/opencode-api/releases/latest/download/opencode2api-linux-arm64
+chmod +x opencode2api
+```
+
+可用名称：`opencode2api-linux-amd64`、`opencode2api-linux-arm64`、`opencode2api-darwin-amd64`、`opencode2api-darwin-arm64`、`opencode2api-windows-amd64.exe`、`opencode2api-windows-arm64.exe`。
+
 示例配置的 API 监听 `127.0.0.1:8080`，WebUI 监听 `0.0.0.0:8081`。本机可访问 `http://localhost:8081`。通过网络访问管理界面时，请限制访问范围，并使用 HTTPS 反向代理。
 
 命令行参数：

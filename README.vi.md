@@ -47,6 +47,17 @@ Trước khi khởi động, hãy sửa `config.json`:
 
 Trên Windows, dùng `Copy-Item config.example.json config.json`, build bằng `go build -o opencode2api.exe ./cmd/opencode2api`, rồi chạy `.\opencode2api.exe -config config.json`.
 
+### Tải bản phát hành
+
+Mỗi bản phát hành có kèm tệp nhị phân độc lập bên cạnh các gói nén, với tên cố định, nên cập nhật chỉ cần tải một lần:
+
+```bash
+curl -L -o opencode2api https://github.com/leloush-x/opencode-api/releases/latest/download/opencode2api-linux-arm64
+chmod +x opencode2api
+```
+
+Tên có sẵn: `opencode2api-linux-amd64`, `opencode2api-linux-arm64`, `opencode2api-darwin-amd64`, `opencode2api-darwin-arm64`, `opencode2api-windows-amd64.exe`, `opencode2api-windows-arm64.exe`.
+
 File mẫu lắng nghe `127.0.0.1:8080` cho API và `0.0.0.0:8081` cho WebUI. Mở `http://localhost:8081` ở máy cục bộ. Hãy giới hạn quyền truy cập quản trị và dùng reverse proxy HTTPS khi truy cập qua mạng.
 
 Tuỳ chọn dòng lệnh:
