@@ -1,10 +1,12 @@
 package httpx
 
 // v2ClientVersion is the OpenCode 2.x CLI release the gateway claims to be on
-// the v2 lanes (/inference and /zen/go). Upstream accepts a range of releases
-// (the version number itself is not validated), so this only needs bumping
-// when it starts rejecting older ones.
-const v2ClientVersion = "2.1.1"
+// the v2 lanes (/inference and /zen/go). It is the fallback for the version
+// the update service reports (see contract.go) and the floor below which a
+// resolved version is discarded: the free tier parses the version out of the
+// User-Agent and answers 426 below its floor, so the claimed version must
+// never be older than the newest one known to work.
+const v2ClientVersion = "2.1.2"
 
 // v1ClientVersion is the OpenCode 1.x release the gateway claims to be on the
 // v1 lane (/zen), and v1BunVersion is the Bun runtime that release ships with.
@@ -28,9 +30,12 @@ const (
 )
 
 // V2UserAgent reports the gateway as an OpenCode 2.x CLI using the shape the
-// v2 gate expects: "opencode/<channel>/<version>/<name>".
+// v2 gate expects: "opencode/<channel>/<version>/<name>". The version is the
+// latest official release, resolved from the update service in the background
+// and cached, so the claimed version does not fall behind the free tier's
+// floor.
 func V2UserAgent() string {
-	return "opencode/latest/" + v2ClientVersion + "/cli"
+	return "opencode/latest/" + cliVersionNow() + "/cli"
 }
 
 // V1UserAgent is the OpenCode 1.x client's own User-Agent, a bare

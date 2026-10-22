@@ -1515,12 +1515,20 @@ func upstreamRequest(ctx context.Context, baseURL string, protocol wire.Protocol
 // v2EndpointPath returns the route a 2.1 client posts to on a v2 origin. The
 // 2.1 client groups /inference routes by provider family, so the family
 // segment sits between the origin and the protocol path (a 2.0.32 client
-// posted the protocol path directly, and that route still answers). Origins
-// that are not the /inference gateway — a custom base, or /zen/go — keep the
-// flat route, because the family grouping is specific to /inference.
+// posted the protocol path directly, and that route still answers).
+//
+// The grouping belongs to the /inference gateway, so it applies to its base
+// and to everything under it: the Go plan's /inference/go base groups its
+// routes the same way, and the documented Go chat route is
+// /inference/go/openai/v1/chat/completions. An origin outside /inference — a
+// custom base, or the legacy /zen/go — keeps the flat route.
 func v2EndpointPath(baseURL string, protocol wire.Protocol) string {
 	parsed, err := url.Parse(baseURL)
-	if err != nil || !strings.HasSuffix(strings.TrimRight(parsed.Path, "/"), "/inference") {
+	if err != nil {
+		return wire.Path(protocol)
+	}
+	path := strings.TrimRight(parsed.Path, "/")
+	if path != "/inference" && !strings.HasPrefix(path, "/inference/") {
 		return wire.Path(protocol)
 	}
 	family := "openai"
