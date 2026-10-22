@@ -155,15 +155,18 @@ export class Admin {
 
   private sessionFrom(request: Request): Session | undefined {
     const cookie = request.headers.get("cookie") ?? "";
-    const match = /(?:^|;\s*)oc2api_session=([^;]+)/.exec(cookie);
-    if (!match) return undefined;
-    const session = this.sessions.get(match[1]);
-    if (!session) return undefined;
-    if (session.expiresAt < Date.now()) {
-      this.sessions.delete(session.token);
-      return undefined;
+    // A client may send several cookies with the same name (an old session
+    // next to a fresh one); the first one that is still valid wins.
+    for (const match of cookie.matchAll(/(?:^|;\s*)oc2api_session=([^;]+)/g)) {
+      const session = this.sessions.get(match[1]);
+      if (!session) continue;
+      if (session.expiresAt < Date.now()) {
+        this.sessions.delete(session.token);
+        continue;
+      }
+      return session;
     }
-    return session;
+    return undefined;
   }
 
   private requireSession(

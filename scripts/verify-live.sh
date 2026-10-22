@@ -7,6 +7,7 @@ KEY="local-test-key"
 BASE="http://127.0.0.1:${PORT_API}"
 WEB="http://127.0.0.1:${PORT_WEB}"
 MODEL=${MODEL:-glm-5.3-flash-free}
+COOKIES=${COOKIES:-/tmp/oc2api-bun/cookies}
 PASS=0
 FAIL=0
 
@@ -29,6 +30,15 @@ code=$(curl -s -o /tmp/vm.json -w "%{http_code}" -m 20 "$BASE/v1/models" -H "Aut
 check "models with a key is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
 grep -q "\"$MODEL\"" /tmp/vm.json
 check "models list contains $MODEL" $?
+
+# 0. preflight: the free tier rate limits repeated runs
+probe=$(timeout 60 curl -s -o /tmp/vprobe.json -w "%{http_code}" -m 50 "$BASE/v1/chat/completions" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" 2>&1)
+if [ "$probe" = "429" ]; then
+  echo "SKIP  the free tier is rate limiting this IP (429); the live checks need a cool-down"
+  exit 0
+fi
 
 # 4. chat, streaming
 out=$(timeout 120 curl -s -N -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" \
@@ -68,13 +78,47 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 "$BASE/v1/chat/completions" 
 check "unknown model is 404" "$([ "$code" = "404" ] && echo 0 || echo 1)"
 
 # 9. admin
+rm -f "$COOKIES"
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 "$WEB/")
 check "webui index is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
-code=$(curl -s -o /tmp/vlogin.json -w "%{http_code}" -m 15 -X POST "$WEB/api/auth/login" \
+code=$(curl -s -o /tmp/vlogin.json -w "%{http_code}" -m 15 -c "$COOKIES" -X POST "$WEB/api/auth/login" \
   -H "Content-Type: application/json" -d '{"username":"admin","password":"change-this-admin-password"}')
 check "admin login is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
 grep -q '"csrf"' /tmp/vlogin.json
 check "admin login returns a csrf token" $?
+
+# 10. tool call round trip
+out=$(timeout 120 curl -s -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"What is the weather in Oslo? Use the tool.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"the weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}}}]}" 2>&1)
+echo "$out" | grep -q '"tool_calls"'
+check "chat tool call is returned" $?
+call_id=$(echo "$out" | sed -n 's/.*"id":"\(call_[^"]*\)".*/\1/p' | head -1)
+[ -n "$call_id" ]
+check "the tool call carries an id" $?
+if [ -n "$call_id" ]; then
+  out=$(timeout 120 curl -s -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"What is the weather in Oslo? Use the tool.\"},{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"$call_id\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Oslo\\\"}\"}}]},{\"role\":\"tool\",\"tool_call_id\":\"$call_id\",\"content\":\"7C and rain\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}}}]}" 2>&1)
+  echo "$out" | grep -q '"finish_reason":"stop"'
+  check "the tool result completes the turn" $?
+fi
+
+# 11. two requests at once
+a=$(timeout 120 curl -s -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"say a\"}]}" 2>&1 &
+  timeout 120 curl -s -m 110 "$BASE/v1/chat/completions" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"say b\"}]}" 2>&1)
+echo "$a" | grep -c '"object":"chat.completion"' >/dev/null
+check "two concurrent requests both answer" $?
+
+# 12. the management API
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 -b "$COOKIES" "$WEB/api/monitor")
+check "admin monitor is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 -b "$COOKIES" "$WEB/api/logs")
+check "admin logs is 200" "$([ "$code" = "200" ] && echo 0 || echo 1)"
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 "$WEB/api/config")
+check "admin config without a session is 401" "$([ "$code" = "401" ] && echo 0 || echo 1)"
 
 echo
 echo "passed: $PASS   failed: $FAIL"

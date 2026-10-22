@@ -194,9 +194,13 @@ export class Gateway {
   /** anonymousUpstreams returns the ordered origins of the keyless lane. */
   anonymousUpstreams(): string[] {
     const primary = this.config.upstream.anonymous.replace(/\/+$/, "");
-    if (primary === "" || primary.toLowerCase() === V1_BASE.toLowerCase())
-      return [V1_BASE];
-    return [primary, V1_BASE];
+    const fallback = (this.config.upstream.fallback || V1_BASE).replace(
+      /\/+$/,
+      "",
+    );
+    if (primary === "" || primary.toLowerCase() === fallback.toLowerCase())
+      return [fallback];
+    return [primary, fallback];
   }
 
   lanePaused(): boolean {

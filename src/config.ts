@@ -21,6 +21,8 @@ import { dirname, isAbsolute, join } from "bun:path";
 export interface UpstreamConfig {
   /** The keyless free tier origin (the v2 /inference console). */
   anonymous: string;
+  /** The v1 (/zen) origin the anonymous lane falls back to. */
+  fallback: string;
 }
 
 export interface RetryConfig {
@@ -97,7 +99,10 @@ export const DEFAULT_CONFIG: Config = {
   server_keys: [],
   proxies: [],
   proxyfile: "",
-  upstream: { anonymous: "https://opencode.ai/inference" },
+  upstream: {
+    anonymous: "https://opencode.ai/inference",
+    fallback: "https://opencode.ai/zen",
+  },
   retry: { max_attempts: 3, timeout_seconds: 300 },
   models: { refresh_seconds: 300, protocols: {} },
   performance: {
@@ -240,7 +245,7 @@ export function decodeConfig(raw: unknown): Config {
   );
 
   const upstream = readObject(raw.upstream ?? {}, "upstream");
-  rejectUnknown(upstream, ["anonymous"], "upstream");
+  rejectUnknown(upstream, ["anonymous", "fallback"], "upstream");
 
   const retry = readObject(raw.retry ?? {}, "retry");
   rejectUnknown(
@@ -369,6 +374,11 @@ export function decodeConfig(raw: unknown): Config {
         upstream.anonymous,
         "upstream.anonymous",
         DEFAULT_CONFIG.upstream.anonymous,
+      ),
+      fallback: readString(
+        upstream.fallback,
+        "upstream.fallback",
+        DEFAULT_CONFIG.upstream.fallback,
       ),
     },
     retry: {

@@ -50,9 +50,11 @@ accepted (and ignored) in `config.json`, so an existing file keeps loading.
 
 ## Verification
 
-- `bun test` — 45 tests in parallel worker processes: configuration, the
+- `bun test` — 51 tests in parallel worker processes: configuration, the
   protocol bridge, the streaming parser/emitter/transcoder/collapser, the
-  upstream request shaping, the gateway against a stub upstream.
+  upstream request shaping, and the gateway against a stub upstream (auth,
+  unknown and paid models, a tool-call round trip, the Anthropic envelope,
+  malformed bodies and an upstream failure).
 - `bun run typecheck` (`bun check`) — clean, 17 files.
 - `scripts/verify-live.sh` — 15 checks against the **real** free tier
   (`glm-5.3-flash-free`): health, auth, the model list, streaming and

@@ -65,7 +65,7 @@ accepted and ignored, so an existing `config.json` keeps loading.
   "server_keys": ["change-this-local-key"],
   "proxies": ["direct"],
   "proxyfile": "",
-  "upstream": { "anonymous": "https://opencode.ai/inference" },
+  "upstream": { "anonymous": "https://opencode.ai/inference", "fallback": "https://opencode.ai/zen" },
   "retry": { "max_attempts": 3, "timeout_seconds": 300, "stream_timeout_seconds": 0 },
   "models": { "refresh_seconds": 300, "protocols": {}, "anonymous_backoff": { "threshold": 6, "base_hours": 1, "max_hours": 24 } },
   "performance": { "max_idle_conns": 2048, "max_idle_conns_per_host": 256, "max_conns_per_host": 0, "idle_conn_timeout_seconds": 120, "connect_timeout_seconds": 5, "failure_cooldown_seconds": 15, "attempt_timeout_seconds": 0, "first_event_timeout_seconds": 0, "max_anonymous_exits": 8, "free_tier_block_seconds": 900 },
@@ -92,6 +92,8 @@ accepted and ignored, so an existing `config.json` keeps loading.
   merged, so limits, cost and the native protocol of every model are known.
 - **Exits** — direct, HTTP, HTTPS, SOCKS5 and rotating `#pool` proxies, with a
   per-session cursor, cool-downs and a free-tier IP block guard.
+- **Two lanes** — the v2 `/inference` console first, the v1 `/zen` origin
+  (`upstream.fallback`) as the fallback.
 - **Management API** — login, sessions, CSRF, masked configuration, monitor,
   logs and a live log stream, plus the existing WebUI served by Bun's own
   directory routes.
