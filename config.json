@@ -1,5 +1,5 @@
 {
-  "listen": "127.0.0.1:14262",
+  "listen": "0.0.0.0:14262",
   "server_keys": [
     "free"
   ],
@@ -46,11 +46,10 @@
     "enabled": true,
     "listen": "0.0.0.0:8081",
     "username": "admin",
-    "password": "admin",
+    "password_hash": "$argon2id$v=19$m=65536,t=2,p=1$vpNDIOACNm+x1vvAWX/hx7QLI7mkSqpEgxthEy6HJaU$x+U5fQjKswy93STizZAqz28RMj+nvtIFlw4xBtiE0eo",
     "session_ttl_minutes": 720
   },
   "reasoning": {
-    "effort": "",
-    "effort_by_model": {}
+    "effort": ""
   }
 }
