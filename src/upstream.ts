@@ -60,7 +60,12 @@ export function isInferenceOrigin(baseURL: string): boolean {
 /** v2EndpointPath returns the route a 2.1 client posts to on a v2 origin. */
 export function v2EndpointPath(baseURL: string, protocol: Protocol): string {
   if (!isInferenceOrigin(baseURL)) return protocolPath(protocol);
-  const family = protocol === ANTHROPIC ? "anthropic" : "openai";
+  const family =
+    protocol === ANTHROPIC
+      ? "anthropic"
+      : protocol === SYSTEM_ONE
+        ? "systemone"
+        : "openai";
   return `/${family}${protocolPath(protocol)}`;
 }
 

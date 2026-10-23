@@ -43,6 +43,10 @@ const NPM_PROTOCOL: Record<string, Protocol> = {
 
 export class ModelCatalog {
   private models = new Map<string, ModelInfo>();
+  /** The protocol the upstream confirmed for a model. */
+  private learned = new Map<string, Protocol>();
+  /** Models the upstream refuses to serve on the keyless lane. */
+  private unavailable = new Set<string>();
   private refreshedAt = 0;
   private lastError = "";
   private started = false;
@@ -69,7 +73,9 @@ export class ModelCatalog {
   }
 
   infos(): ModelInfo[] {
-    return this.list().map((id) => this.models.get(id)!);
+    return this.list()
+      .filter((id) => !this.unavailable.has(id))
+      .map((id) => this.models.get(id)!);
   }
 
   snapshot(): CatalogSnapshot {
@@ -94,6 +100,8 @@ export class ModelCatalog {
 
   /** protocolFor returns the native protocol of a model. */
   protocolFor(model: string, overrides: Record<string, string>): Protocol {
+    const learned = this.learned.get(model);
+    if (learned) return learned;
     const override = overrides[model];
     if (
       override === "chat" ||
@@ -102,6 +110,71 @@ export class ModelCatalog {
     )
       return override;
     return this.models.get(model)?.protocol ?? "chat";
+  }
+
+  /** setProtocol remembers the protocol the upstream accepted for a model. */
+  setProtocol(model: string, protocol: Protocol): void {
+    this.learned.set(model, protocol);
+  }
+
+  /** markUnavailable hides a model the upstream does not serve. */
+  markUnavailable(model: string): void {
+    this.unavailable.add(model);
+  }
+
+  /** markAvailable undoes markUnavailable after a successful request. */
+  markAvailable(model: string): void {
+    this.unavailable.delete(model);
+  }
+
+  /** isUnavailable reports whether the model was refused by the upstream. */
+  isUnavailable(model: string): boolean {
+    return this.unavailable.has(model);
+  }
+
+  /**
+   * protocolCandidates returns the protocols to try for a model, best first:
+   * the known one, then the others. The capability catalog misses some
+   * models, so the upstream may only accept a different protocol.
+   */
+  protocolCandidates(
+    model: string,
+    overrides: Record<string, string>,
+  ): Protocol[] {
+    const preferred = this.protocolFor(model, overrides);
+    const others: Protocol[] = ["chat", "responses", "anthropic"];
+    return [preferred, ...others.filter((protocol) => protocol !== preferred)];
+  }
+
+  /** toCache renders the catalog for the cache file. */
+  toCache(): {
+    models: ModelInfo[];
+    learned: Record<string, Protocol>;
+    unavailable: string[];
+  } {
+    return {
+      models: this.infos(),
+      learned: Object.fromEntries(this.learned),
+      unavailable: [...this.unavailable],
+    };
+  }
+
+  /** restoreCache installs a cached catalog. */
+  restoreCache(data: {
+    models?: ModelInfo[];
+    learned?: Record<string, Protocol>;
+    unavailable?: string[];
+  }): void {
+    if (Array.isArray(data.models) && data.models.length) this.replace(data.models);
+    for (const [model, protocol] of Object.entries(data.learned ?? {})) {
+      if (
+        protocol === "chat" ||
+        protocol === "responses" ||
+        protocol === "anthropic"
+      )
+        this.learned.set(model, protocol);
+    }
+    for (const model of data.unavailable ?? []) this.unavailable.add(model);
   }
 
   /** isFree reports whether the free tier may serve the model. */

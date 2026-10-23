@@ -19,6 +19,32 @@ interface Flags {
   webListen?: string;
 }
 
+/**
+ * parseListen splits a listen address into its host and port. A bare port
+ * ("8080") and a missing host (":8080") fall back to the default host, and
+ * an IPv6 address keeps its brackets.
+ */
+function parseListen(
+  address: string,
+  defaultHost: string,
+): { host: string; port: number } {
+  const trimmed = address.trim();
+  const bracketed = /^\[(.+)\]:(\d+)$/.exec(trimmed);
+  if (bracketed) return { host: bracketed[1], port: Number(bracketed[2]) };
+  const colon = trimmed.lastIndexOf(":");
+  if (colon < 0) {
+    const port = Number(trimmed);
+    if (Number.isFinite(port) && port > 0) return { host: defaultHost, port };
+    return { host: defaultHost, port: 8080 };
+  }
+  const host = trimmed.slice(0, colon).trim();
+  const port = Number(trimmed.slice(colon + 1));
+  return {
+    host: host === "" ? defaultHost : host,
+    port: Number.isFinite(port) ? port : 8080,
+  };
+}
+
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = { config: "config.json" };
   for (let i = 0; i < argv.length; i++) {
@@ -64,9 +90,10 @@ async function main(): Promise<void> {
   const gateway = new Gateway(config, flags.config);
   gateway.start();
 
+  const apiListen = parseListen(config.listen, "127.0.0.1");
   const api = Bun.serve({
-    port: Number(config.listen.split(":").pop() ?? 8080),
-    hostname: config.listen.split(":")[0] || "127.0.0.1",
+    port: apiListen.port,
+    hostname: apiListen.host,
     idleTimeout: 120,
     fetch: (request) => gateway.handle(request),
   });
@@ -102,10 +129,11 @@ async function main(): Promise<void> {
         "webui assets not found; serving the api only",
         { assets },
       );
+    const webListen = parseListen(config.webui.listen, "0.0.0.0");
     admin = Bun.serve({
       routes,
-      port: Number(config.webui.listen.split(":").pop() ?? 8081),
-      hostname: config.webui.listen.split(":")[0] || "0.0.0.0",
+      port: webListen.port,
+      hostname: webListen.host,
       idleTimeout: 120,
       fetch: (request) => manager.handle(request),
     });

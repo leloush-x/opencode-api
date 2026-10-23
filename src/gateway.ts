@@ -459,10 +459,12 @@ export class Gateway {
       );
     }
 
-    const upstreamProtocol = this.catalog.protocolFor(
-      model,
-      this.config.models.protocols,
-    );
+    // System One is a decision protocol with its own payload shape
+    // (state + questions). It is never converted from/to the chat-style
+    // protocols: the client posts a decision document to /v1/systemone and
+    // the port relays it verbatim upstream.
+    const upstreamProtocol =
+      external === SYSTEM_ONE ? SYSTEM_ONE : this.catalog.protocolFor(model, this.config.models.protocols);
     const ids = deriveRequestIds(
       Object.fromEntries(request.headers.entries()),
       payload,
@@ -513,6 +515,17 @@ export class Gateway {
     }
 
     const response = attempt.response;
+    if (response.status / 100 === 2) {
+      // Remember the protocol the upstream accepted and clear a stale
+      // "unavailable" mark.
+      if (
+        upstreamProtocol !==
+        this.catalog.protocolFor(model, this.config.models.protocols)
+      )
+        this.catalog.setProtocol(model, upstreamProtocol);
+      this.catalog.markAvailable(model);
+      this.saveCachedCatalog();
+    }
     if (response.status / 100 !== 2) {
       const text = await response.text();
       monitor.recordRequest("failed");
@@ -748,6 +761,15 @@ export class Gateway {
         : { error: { message, type: kind, param: null, code: null } };
     return new Response(JSON.stringify(body), { status, headers });
   }
+}
+
+/** isProtocolRejection reports whether the upstream refused the protocol. */
+function isProtocolRejection(text: string): boolean {
+  const lowered = text.toLowerCase();
+  return (
+    lowered.includes("does not support this protocol") ||
+    lowered.includes("protocol not supported")
+  );
 }
 
 function extractErrorMessage(text: string): string {
