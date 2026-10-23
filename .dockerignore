@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.bun/
+*.log
+*.tmp
+.git/
+.gitignore
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+PORTING.md
+config.json
+config.json.bak
+*.models.catalog.json
+
+.env
+*.availability.json
+*.rotation.json
+
+# Keep the bun install cache out of git (it holds scoped packages with
+# mangled names git cannot stat).
+bun/node_modules/
